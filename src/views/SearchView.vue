@@ -188,11 +188,11 @@ onMounted(runSearch);
       </p>
 
       <template v-if="loading">
-        <div v-for="i in 4" :key="i" class="card animate-pulse">
-          <div class="aspect-[16/10] w-full bg-zinc-200 dark:bg-zinc-800" />
-          <div class="space-y-2 p-3">
-            <div class="h-4 w-3/4 rounded bg-zinc-200 dark:bg-zinc-800" />
-            <div class="h-3 w-1/2 rounded bg-zinc-200 dark:bg-zinc-800" />
+        <div v-for="i in 6" :key="i" class="list-row animate-pulse">
+          <div class="h-14 w-14 flex-none bg-zinc-200" />
+          <div class="flex-1 space-y-1.5">
+            <div class="h-4 w-3/4 bg-zinc-200" />
+            <div class="h-3 w-1/2 bg-zinc-200" />
           </div>
         </div>
       </template>
@@ -217,7 +217,7 @@ onMounted(runSearch);
           :key="`${activeType}-${doc.document_id}`"
           :doc="doc"
           :type="activeType"
-          variant="hero"
+          variant="compact"
         />
       </template>
     </section>
