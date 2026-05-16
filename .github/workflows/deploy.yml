@@ -27,6 +27,12 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      # Auto-create the Pages site on first run if it isn't enabled yet.
+      # Without this, deploy-pages@v4 returns 404 the very first time.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - run: npm ci
 
       # The repo lives at /<owner>/c2c-mobile, so pages serves it at
