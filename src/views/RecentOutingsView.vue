@@ -59,11 +59,9 @@ const activeSummary = computed(() => {
   return parts;
 });
 
-function variantFor(doc) {
-  const hasImage = (doc.img_count && doc.img_count > 0)
-    || (Array.isArray(doc.associations?.images) && doc.associations.images.length);
-  return hasImage ? 'hero' : 'compact';
-}
+// Every outing in the feed uses the camptocamp.org-style card. The card
+// itself handles the no-photo case (just omits the mosaic), so we don't
+// need a variant switch anymore.
 
 onMounted(async () => {
   await prefs.hydrate();
@@ -143,7 +141,7 @@ onMounted(async () => {
           :key="doc.document_id"
           :doc="doc"
           type="outing"
-          :variant="variantFor(doc)"
+          variant="outing"
           :show-save="true"
         />
         <div ref="sentinel" class="h-8" />
