@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/*  Design tokens                                                      */
+/*  Light mode by default, dark mode follows OS preference.            */
+/* ------------------------------------------------------------------ */
+@layer base {
+  :root {
+    color-scheme: light dark;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html,
+  body,
+  #app {
+    @apply h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
+  }
+
+  body {
+    @apply m-0 antialiased;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Headings tighter for mobile reading. */
+  h1, h2, h3, h4 {
+    @apply tracking-tight;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reusable component classes                                         */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-medium transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-white;
+    @apply dark:focus:ring-offset-zinc-950;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700;
+  }
+
+  .btn-secondary {
+    @apply btn bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800;
+  }
+
+  .card {
+    @apply overflow-hidden rounded-2xl bg-white shadow-card dark:bg-zinc-900;
+    @apply transition-shadow hover:shadow-card-hover;
+  }
+
+  /* Page header shared by all top-level views. */
+  .page-header {
+    @apply sticky top-0 z-20 border-b border-zinc-200 bg-white/95 px-4 pb-2 pt-3 backdrop-blur;
+    @apply dark:border-zinc-800 dark:bg-zinc-950/95;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold tracking-tight;
+  }
+
+  /* Generic compact list row (used for waypoints, articles, books, forum). */
+  .list-row {
+    @apply flex items-center gap-3 rounded-xl bg-white p-3 shadow-card dark:bg-zinc-900;
+    @apply transition-shadow hover:shadow-card-hover;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300;
+  }
+
+  .pill-brand {
+    @apply pill bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200;
+  }
+
+  /* Filter chip used in horizontal strips. Active state uses the brand color. */
+  .chip {
+    @apply whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-colors;
+    @apply border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300;
+    @apply dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300;
+  }
+
+  .chip-active {
+    @apply chip border-brand-500 bg-brand-500 text-white;
+  }
+
+  /* Segmented control: a row of buttons inside a rounded tray. */
+  .segmented {
+    @apply flex gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900;
+  }
+  .segmented-btn {
+    @apply flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors;
+    @apply text-zinc-600 dark:text-zinc-400;
+  }
+  .segmented-btn-active {
+    @apply bg-white text-zinc-900 shadow dark:bg-zinc-800 dark:text-zinc-100;
+  }
+
+  /* Bottom sheet (modal anchored to the bottom of the viewport). */
+  .sheet-backdrop {
+    @apply fixed inset-0 z-40 bg-black/50 backdrop-blur-sm;
+  }
+  .sheet {
+    @apply fixed inset-x-0 bottom-0 z-50 max-h-[90vh] overflow-hidden rounded-t-3xl bg-white shadow-sheet;
+    @apply dark:bg-zinc-900;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .sheet-handle {
+    @apply mx-auto my-2 h-1.5 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700;
+  }
+
+  /* Hide scrollbar but allow scrolling — for horizontal chip strips. */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Switch toggle (used for "Activer mes préférences"). */
+  .switch {
+    @apply relative inline-flex h-6 w-11 flex-none cursor-pointer items-center rounded-full transition-colors;
+    @apply bg-zinc-300 dark:bg-zinc-700;
+  }
+  .switch-on {
+    @apply bg-emerald-500;
+  }
+  .switch-thumb {
+    @apply inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform;
+    transform: translateX(0.125rem);
+  }
+  .switch-on .switch-thumb {
+    transform: translateX(1.375rem);
+  }
+}
