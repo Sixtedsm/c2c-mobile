@@ -181,6 +181,50 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+  /* Cooked HTML body — overrides @tailwindcss/typography defaults to match
+     camptocamp.org's tighter, more sober reading style. */
+  .prose {
+    color: #4a4a4a;
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: none;
+  }
+  .prose a {
+    color: #337ab7;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .prose h1, .prose h2, .prose h3, .prose h4 {
+    color: #4a4a4a;
+    font-weight: 600;
+    margin-top: 1em;
+    margin-bottom: 0.4em;
+  }
+  .prose h2 { font-size: 1.15rem; }
+  .prose h3 { font-size: 1.05rem; }
+  .prose h4 { font-size: 0.95rem; }
+  .prose p { margin: 0.5em 0; }
+  .prose ul, .prose ol { padding-left: 1.2em; margin: 0.5em 0; }
+  .prose li { margin: 0.15em 0; }
+  .prose img { margin: 0.8em 0; }
+  .prose table { font-size: 0.9rem; border-collapse: collapse; }
+  .prose th, .prose td {
+    padding: 0.35em 0.6em;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+  .prose blockquote {
+    border-left: 3px solid #ff9933;
+    padding-left: 0.8em;
+    color: #6b6b6b;
+    font-style: normal;
+  }
+  .prose code {
+    background: #f4f4f0;
+    padding: 0.1em 0.35em;
+    border-radius: 2px;
+    font-size: 0.9em;
+  }
+
   /* Switch toggle. */
   .switch {
     @apply relative inline-flex h-6 w-11 flex-none cursor-pointer items-center rounded-full transition-colors;

@@ -1,3 +1,5 @@
+import typography from '@tailwindcss/typography';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts}'],
@@ -74,5 +76,11 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    typography({
+      // C2C-tinted prose: gray text, brand-orange link underline, tighter
+      // line-height than Tailwind's default to feel like the website.
+      className: 'prose',
+    }),
+  ],
 };
