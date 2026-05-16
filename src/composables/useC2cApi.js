@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '@/stores/auth';
 
 const BASE_URL = 'https://api.camptocamp.org';
 const MEDIA_URL = 'https://media.camptocamp.org/c2corg-active';
@@ -14,7 +15,26 @@ const forumHttp = axios.create({
   timeout: 15000,
 });
 
-const DOCUMENT_TYPES = ['article', 'book', 'image', 'outing', 'route', 'waypoint', 'xreport', 'area', 'map'];
+// Inject the JWT on every authenticated request. The interceptor reads the
+// auth store fresh each time so a login mid-session takes effect on the next
+// call without re-instantiating the axios client.
+http.interceptors.request.use((config) => {
+  try {
+    const auth = useAuthStore();
+    if (auth.isLoggedIn && auth.authHeader) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = auth.authHeader;
+    }
+  } catch {
+    // Pinia not installed in some edge contexts — non-fatal.
+  }
+  return config;
+});
+
+const DOCUMENT_TYPES = [
+  'article', 'book', 'image', 'outing', 'route', 'waypoint',
+  'xreport', 'area', 'map', 'profile',
+];
 
 function pluralize(type) {
   return `${type}s`;
@@ -35,9 +55,6 @@ export function useC2cApi() {
       return data;
     },
 
-    /**
-     * Full-text search across C2C document types.
-     */
     async search(q, opts = {}) {
       const types = opts.types?.length ? opts.types.join(',') : 'r,o,w';
       const { data } = await http.get('/search', {
@@ -51,9 +68,6 @@ export function useC2cApi() {
       return data;
     },
 
-    /**
-     * Autocomplete on areas (massifs/regions). Returns up to 10 matches.
-     */
     async searchAreas(q) {
       if (!q || q.length < 2) return [];
       const { data } = await http.get('/search', {
@@ -62,9 +76,6 @@ export function useC2cApi() {
       return data.areas?.documents || [];
     },
 
-    /**
-     * Fetch a single cooked document (with localized HTML rendered).
-     */
     async getCooked(type, id, lang) {
       if (!DOCUMENT_TYPES.includes(type)) {
         throw new Error(`Unknown document type: ${type}`);
@@ -75,14 +86,8 @@ export function useC2cApi() {
       return data;
     },
 
-    /**
-     * Comments on a document (where C2C supports them — outings, xreports).
-     * They live in the Discourse forum and are linked via the document_id.
-     */
     async getComments(type, id) {
       try {
-        // C2C exposes /<type>s/<id>/comments → forwards to the Discourse forum
-        // topic associated with the doc. Some types don't have comments.
         const { data } = await http.get(`/${pluralize(type)}/${id}/comments`);
         return data;
       } catch (e) {
@@ -90,9 +95,49 @@ export function useC2cApi() {
       }
     },
 
-    /**
-     * Discourse forum: latest topics (homepage feed).
-     */
+    // ---------- Auth -----------------------------------------------------
+    async login({ username, password }) {
+      const { data } = await http.post('/users/login', {
+        username,
+        password,
+        // Skip Discourse SSO flow — we only need the JWT for the API.
+        discourse: false,
+      });
+      return data;
+    },
+
+    async logout() {
+      try {
+        await http.post('/users/logout', { discourse: false });
+      } catch {
+        // Logout is best-effort: if the server can't be reached we still
+        // wipe local state in the caller.
+      }
+    },
+
+    async renewToken() {
+      const { data } = await http.post('/users/renew');
+      return data;
+    },
+
+    async requestPasswordChange(email) {
+      const { data } = await http.post('/users/request_password_change', { email });
+      return data;
+    },
+
+    /** Fetch the authenticated user's own preferences (followed activities, etc.). */
+    async getMyPreferences() {
+      const { data } = await http.get('/users/preferences');
+      return data;
+    },
+
+    /** Fetch a user profile (the public part) by id. */
+    async getProfile(id, lang = 'fr') {
+      const { data } = await http.get(`/profiles/${id}`, { params: { cook: lang } });
+      return data;
+    },
+
+    // ---------- Forum (Discourse) ----------------------------------------
     async forumLatest(opts = {}) {
       const { data } = await forumHttp.get('/latest.json', {
         params: { page: opts.page ?? 0 },
@@ -100,17 +145,11 @@ export function useC2cApi() {
       return data;
     },
 
-    /**
-     * Discourse forum: list of top-level categories.
-     */
     async forumCategories() {
       const { data } = await forumHttp.get('/categories.json');
       return data;
     },
 
-    /**
-     * Topics in a forum category.
-     */
     async forumCategory(slug, id, opts = {}) {
       const { data } = await forumHttp.get(`/c/${slug}/${id}.json`, {
         params: { page: opts.page ?? 0 },
@@ -118,13 +157,8 @@ export function useC2cApi() {
       return data;
     },
 
-    /**
-     * Single topic with its posts.
-     */
     async forumTopic(id, opts = {}) {
-      const { data } = await forumHttp.get(`/t/${id}.json`, {
-        params: opts,
-      });
+      const { data } = await forumHttp.get(`/t/${id}.json`, { params: opts });
       return data;
     },
 
@@ -138,10 +172,6 @@ export function useC2cApi() {
       return path.startsWith('http') ? path : `${FORUM_URL}${path}`;
     },
 
-    /**
-     * Build a usable image URL for a C2C image document, at the requested size.
-     * Size is one of SI (small/200px), MI (medium/400px), BI (big/full).
-     */
     imageUrl(image, size = 'MI') {
       if (!image) return null;
       if (image.filename) {

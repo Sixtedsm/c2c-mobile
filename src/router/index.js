@@ -7,6 +7,7 @@ const SavedView = () => import('@/views/SavedView.vue');
 const ProfileView = () => import('@/views/ProfileView.vue');
 const MoreView = () => import('@/views/MoreView.vue');
 const TopoDetailView = () => import('@/views/TopoDetailView.vue');
+const LoginView = () => import('@/views/LoginView.vue');
 
 const ToposView = () => import('@/views/ToposView.vue');
 const ArticlesView = () => import('@/views/ArticlesView.vue');
@@ -28,6 +29,7 @@ const routes = [
   { path: '/recent', name: 'recent', component: RecentOutingsView, meta: { tab: 'recent' } },
   { path: '/saved', name: 'saved', component: SavedView, meta: { tab: 'saved' } },
   { path: '/me', name: 'profile', component: ProfileView, meta: { tab: 'profile' } },
+  { path: '/login', name: 'login', component: LoginView, meta: { hideBottomNav: true } },
   { path: '/more', name: 'more', component: MoreView, meta: { tab: 'more' } },
 
   // "Plus" hub sub-views — internal, no jumps to camptocamp.org.

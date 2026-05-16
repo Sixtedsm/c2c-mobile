@@ -6,25 +6,16 @@ import { activityLabel } from '@/constants/c2c';
 import { useDocCover } from '@/composables/useDocCover';
 
 const props = defineProps({
-  // Document object (any C2C type). Required.
   doc: { type: Object, required: true },
-  // C2C document type ('route', 'outing', 'waypoint', 'article', 'book', 'xreport').
   type: { type: String, required: true },
-  // 'hero' (default, image-led) | 'compact' (single row, thumbnail) |
-  // 'feed' (insta-style 4:5 image, used by RecentOutings).
   variant: { type: String, default: 'hero' },
   lang: { type: String, default: 'fr' },
-  // Whether to show the "save offline" button. Articles/books/xreports
-  // are stored differently — keep the button off for now to avoid confusion.
   showSave: { type: Boolean, default: true },
 });
 
 const api = useC2cApi();
 const offlineStore = useOfflineStore();
 
-// Cover/thumb resolution: the listing payloads don't carry associations.images
-// (only img_count). `useDocCover` falls back to a lazy `/images?d=<doc_id>`
-// fetch when the doc has at least one image. Cached per session.
 const docRef = toRef(props, 'doc');
 const heroSize = computed(() => (props.variant === 'feed' ? 'BI' : 'MI'));
 const { url: coverImage } = useDocCover(docRef, heroSize.value);
@@ -73,18 +64,10 @@ const difficultyLabel = computed(() => {
   );
 });
 
-// Type-specific badge displayed on compact rows: waypoint kind, article
-// category, etc. Helps the user scan a heterogenous list quickly.
 const subtypeLabel = computed(() => {
-  if (props.type === 'waypoint' && props.doc.waypoint_type) {
-    return props.doc.waypoint_type;
-  }
-  if (props.type === 'article' && props.doc.categories?.length) {
-    return props.doc.categories[0];
-  }
-  if (props.type === 'book' && props.doc.book_types?.length) {
-    return props.doc.book_types[0];
-  }
+  if (props.type === 'waypoint' && props.doc.waypoint_type) return props.doc.waypoint_type;
+  if (props.type === 'article' && props.doc.categories?.length) return props.doc.categories[0];
+  if (props.type === 'book' && props.doc.book_types?.length) return props.doc.book_types[0];
   return null;
 });
 
@@ -93,9 +76,7 @@ const dateLabel = computed(() => {
   if (!d) return null;
   try {
     return new Date(d).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+      day: 'numeric', month: 'short', year: 'numeric',
     });
   } catch {
     return d;
@@ -125,7 +106,7 @@ const linkTo = computed(() => ({
   <!-- ============ HERO VARIANT ============ -->
   <article v-if="variant === 'hero'" class="card">
     <router-link :to="linkTo" class="block">
-      <div class="relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-brand-100 to-brand-300 dark:from-zinc-800 dark:to-zinc-700">
+      <div class="relative aspect-[16/10] w-full overflow-hidden" style="background: linear-gradient(135deg, #f0ece2, #d8d2c1);">
         <img
           v-if="coverImage"
           :src="coverImage"
@@ -134,16 +115,23 @@ const linkTo = computed(() => ({
           decoding="async"
           class="h-full w-full object-cover"
         />
-        <div v-else class="flex h-full w-full items-center justify-center text-brand-700 dark:text-zinc-400">
-          <svg class="h-12 w-12 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m2 22 7.586-7.586a2 2 0 0 1 2.828 0L20 22M14 14l1.586-1.586a2 2 0 0 1 2.828 0L22 16M14 8h.01M2 16V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z" />
-          </svg>
-        </div>
+        <!-- Neutral mountain silhouette fallback — no broken-file icon. -->
+        <svg
+          v-else
+          class="absolute inset-x-0 bottom-0 w-full"
+          viewBox="0 0 400 120"
+          preserveAspectRatio="none"
+          style="opacity: 0.4;"
+        >
+          <path d="M0 120 L80 50 L130 80 L200 20 L280 70 L340 40 L400 90 L400 120 Z" fill="#9ca48f" />
+          <path d="M0 120 L60 90 L130 100 L200 70 L280 100 L340 85 L400 110 L400 120 Z" fill="#7d8675" />
+        </svg>
 
         <button
           v-if="showSave"
-          class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-zinc-700 backdrop-blur transition-colors hover:bg-white dark:bg-zinc-900/80 dark:text-zinc-200"
-          :class="{ '!bg-brand-500 !text-white': isSaved }"
+          class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center text-c2c-text hover:bg-white"
+          :class="isSaved ? 'text-white' : ''"
+          :style="isSaved ? 'background-color: #ff9933; border-radius: 50%;' : 'background-color: rgba(255,255,255,0.9); border-radius: 50%;'"
           :aria-label="isSaved ? 'Retirer du hors-ligne' : 'Sauvegarder hors-ligne'"
           @click.prevent.stop="toggleSave"
         >
@@ -157,8 +145,8 @@ const linkTo = computed(() => ({
       </div>
 
       <div class="space-y-2 p-3">
-        <h3 class="line-clamp-2 text-base font-semibold leading-tight">{{ title }}</h3>
-        <p v-if="summary" class="line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">{{ summary }}</p>
+        <h3 class="line-clamp-2 text-base font-semibold leading-tight text-c2c-text">{{ title }}</h3>
+        <p v-if="summary" class="line-clamp-2 text-sm text-zinc-600">{{ summary }}</p>
         <div class="flex flex-wrap items-center gap-1.5">
           <span v-for="activity in activities" :key="activity" class="pill-brand">
             {{ activityLabel(activity) }}
@@ -172,10 +160,10 @@ const linkTo = computed(() => ({
     </router-link>
   </article>
 
-  <!-- ============ FEED VARIANT (4:5 hero, used by Sorties récentes) ============ -->
+  <!-- ============ FEED VARIANT (4:5 hero) ============ -->
   <article v-else-if="variant === 'feed'" class="card overflow-hidden">
     <router-link :to="linkTo" class="block">
-      <div class="relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-800 dark:to-zinc-700">
+      <div class="relative aspect-[4/5] w-full overflow-hidden" style="background: linear-gradient(135deg, #f0ece2, #d8d2c1);">
         <img
           v-if="coverImage"
           :src="coverImage"
@@ -184,11 +172,16 @@ const linkTo = computed(() => ({
           decoding="async"
           class="h-full w-full object-cover"
         />
-        <div v-else class="flex h-full w-full items-center justify-center text-zinc-400">
-          <svg class="h-16 w-16 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m2 22 7.586-7.586a2 2 0 0 1 2.828 0L20 22M14 14l1.586-1.586a2 2 0 0 1 2.828 0L22 16M14 8h.01M2 16V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z" />
-          </svg>
-        </div>
+        <svg
+          v-else
+          class="absolute inset-x-0 bottom-0 w-full"
+          viewBox="0 0 400 200"
+          preserveAspectRatio="none"
+          style="opacity: 0.4;"
+        >
+          <path d="M0 200 L80 80 L130 120 L200 40 L280 110 L340 70 L400 140 L400 200 Z" fill="#9ca48f" />
+          <path d="M0 200 L60 140 L130 160 L200 110 L280 160 L340 130 L400 170 L400 200 Z" fill="#7d8675" />
+        </svg>
         <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-3 text-white">
           <div class="flex flex-wrap items-center gap-1.5">
             <span
@@ -201,15 +194,15 @@ const linkTo = computed(() => ({
         </div>
       </div>
       <div class="space-y-1 p-3">
-        <h3 class="line-clamp-2 text-base font-semibold leading-tight">{{ title }}</h3>
-        <p v-if="summary" class="line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">{{ summary }}</p>
+        <h3 class="line-clamp-2 text-base font-semibold leading-tight text-c2c-text">{{ title }}</h3>
+        <p v-if="summary" class="line-clamp-2 text-sm text-zinc-600">{{ summary }}</p>
       </div>
     </router-link>
   </article>
 
-  <!-- ============ COMPACT VARIANT (no image or small thumb) ============ -->
+  <!-- ============ COMPACT VARIANT (list row with thumb) ============ -->
   <router-link v-else :to="linkTo" class="list-row block">
-    <div class="h-14 w-14 flex-none overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800">
+    <div class="h-14 w-14 flex-none overflow-hidden" style="background: linear-gradient(135deg, #f0ece2, #d8d2c1);">
       <img
         v-if="thumbImage"
         :src="thumbImage"
@@ -217,16 +210,21 @@ const linkTo = computed(() => ({
         loading="lazy"
         class="h-full w-full object-cover"
       />
-      <div v-else class="flex h-full w-full items-center justify-center text-zinc-400">
-        <svg class="h-6 w-6 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-        </svg>
-      </div>
+      <!-- Subtle mountain silhouette — no broken-icon. -->
+      <svg
+        v-else
+        class="h-full w-full"
+        viewBox="0 0 56 56"
+        preserveAspectRatio="none"
+        style="opacity: 0.5;"
+      >
+        <path d="M0 56 L12 28 L22 38 L32 18 L42 32 L56 24 L56 56 Z" fill="#9ca48f" />
+      </svg>
     </div>
     <div class="min-w-0 flex-1">
-      <h3 class="truncate font-medium">{{ title }}</h3>
-      <div class="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-        <span v-if="subtypeLabel" class="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">
+      <h3 class="truncate font-medium text-c2c-text">{{ title }}</h3>
+      <div class="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-zinc-500">
+        <span v-if="subtypeLabel" class="bg-zinc-100 px-1.5 py-0.5" style="border-radius: 2px;">
           {{ subtypeLabel }}
         </span>
         <span v-for="a in activities.slice(0, 2)" :key="a">{{ activityLabel(a) }}</span>
@@ -237,8 +235,9 @@ const linkTo = computed(() => ({
     </div>
     <button
       v-if="showSave"
-      class="flex h-9 w-9 flex-none items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-      :class="{ '!text-brand-500': isSaved }"
+      class="flex h-9 w-9 flex-none items-center justify-center text-zinc-400 hover:bg-zinc-100"
+      :class="isSaved ? '!text-brand-500' : ''"
+      style="border-radius: 50%;"
       :aria-label="isSaved ? 'Retirer du hors-ligne' : 'Sauvegarder hors-ligne'"
       @click.prevent.stop="toggleSave"
     >

@@ -5,17 +5,20 @@ import BottomNav from '@/components/BottomNav.vue';
 import OfflineBanner from '@/components/OfflineBanner.vue';
 import { useOnline } from '@vueuse/core';
 import { useOfflineStore } from '@/stores/offline';
+import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
 const online = useOnline();
 const offlineStore = useOfflineStore();
+const auth = useAuthStore();
 
 const hideBottomNav = computed(() => route.meta?.hideBottomNav === true);
 
 onMounted(() => {
-  // Hydrate the offline catalog as soon as the app boots so the saved list
-  // is ready when the user opens the "Mes topos" tab.
+  // Hydrate persistent stores on boot so the saved list and the auth session
+  // are ready before any view first reads them.
   offlineStore.hydrate();
+  auth.hydrate();
 });
 </script>
 
