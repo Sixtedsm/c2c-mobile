@@ -1,17 +1,60 @@
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useC2cApi } from '@/composables/useC2cApi';
 
-// The C2C listing endpoints don't include the associated images — only
-// `img_count`. The detail endpoint (cooked) does include them. We close the
-// gap by issuing a single `/images?d=<doc_id>&limit=1` per document with a
-// non-zero img_count, cached for the session so subsequent renders are
-// instant.
-const coverCache = new Map(); // doc_id -> { state, filename, document_id }
-const pendingCache = new Map(); // doc_id -> Promise
+// Listing endpoints (`/routes`, `/outings`, …) don't carry the document's
+// images — only `img_count`. The `/images?d=…` query I tried earlier IGNORED
+// the d param and returned the latest 3 site-wide images for every doc, which
+// is why every card showed the same photo. The only reliable way to get a
+// doc's cover is to fetch the doc itself (`/<type>s/<id>?cook=<lang>`),
+// which carries `associations.images`. We do that lazily, with a small
+// concurrency cap so we don't spam the API when a listing renders 20 cards.
+
+const coverCache = new Map();    // docId -> { filename, document_id } | null
+const pendingCache = new Map();  // docId -> Promise
+
+// Map the short `type` codes returned in listings to the plural API path.
+const TYPE_TO_ENDPOINT = {
+  r: 'routes',
+  o: 'outings',
+  w: 'waypoints',
+  a: 'articles',
+  b: 'books',
+  x: 'xreports',
+  i: 'images',
+  u: 'profiles',
+};
+
+function endpointFor(typeHint, doc) {
+  // Listings expose `type` as a one-letter code; cooked docs also do.
+  const code = doc?.type || typeHint;
+  return TYPE_TO_ENDPOINT[code] || null;
+}
+
+// Concurrency-limited queue so a listing of 30 outings doesn't burst 30
+// parallel requests to api.camptocamp.org.
+const MAX_INFLIGHT = 4;
+let inFlight = 0;
+const queue = [];
+
+function drain() {
+  while (inFlight < MAX_INFLIGHT && queue.length) {
+    const { fn, resolve, reject } = queue.shift();
+    inFlight += 1;
+    fn().then(resolve, reject).finally(() => {
+      inFlight -= 1;
+      drain();
+    });
+  }
+}
+
+function enqueue(fn) {
+  return new Promise((resolve, reject) => {
+    queue.push({ fn, resolve, reject });
+    drain();
+  });
+}
 
 function readDirectImage(doc) {
-  // If the doc already carries an associations.images entry (detail view, or
-  // some search payloads), use it without any extra fetch.
   const assoc = doc?.associations?.images;
   if (Array.isArray(assoc) && assoc.length) {
     return { filename: assoc[0].filename, document_id: assoc[0].document_id };
@@ -19,46 +62,42 @@ function readDirectImage(doc) {
   return null;
 }
 
-async function fetchCover(api, docId) {
+async function fetchCover(api, doc, lang) {
+  const docId = doc.document_id;
   if (coverCache.has(docId)) return coverCache.get(docId);
   if (pendingCache.has(docId)) return pendingCache.get(docId);
 
-  const p = (async () => {
+  const endpoint = endpointFor(null, doc);
+  if (!endpoint) {
+    coverCache.set(docId, null);
+    return null;
+  }
+
+  const p = enqueue(async () => {
     try {
-      // Cheapest probe: 1 image, sorted by default (most recent / best).
-      const { data } = await api.http.get('/images', {
-        params: { d: docId, limit: 1 },
+      const { data } = await api.http.get(`/${endpoint}/${docId}`, {
+        params: { cook: lang },
       });
-      const first = data?.documents?.[0];
-      if (first) {
-        const entry = { state: 'loaded', filename: first.filename, document_id: first.document_id };
-        coverCache.set(docId, entry);
-        return entry;
-      }
-      const empty = { state: 'loaded', filename: null, document_id: null };
-      coverCache.set(docId, empty);
-      return empty;
+      const cover = readDirectImage(data);
+      coverCache.set(docId, cover);
+      return cover;
     } catch (e) {
-      const errEntry = { state: 'error', filename: null, document_id: null };
-      coverCache.set(docId, errEntry);
-      return errEntry;
+      coverCache.set(docId, null);
+      return null;
     } finally {
       pendingCache.delete(docId);
     }
-  })();
-
+  });
   pendingCache.set(docId, p);
   return p;
 }
 
 /**
  * Reactive cover-image URL for a C2C document. Resolves synchronously when
- * the doc already exposes images, otherwise fires a lazy API call.
- *
- * @param {Ref<object>|object} doc the C2C document (listing or cooked shape)
- * @param {string} size 'SI' (200px), 'MI' (400px), 'BI' (full). Default 'MI'.
+ * the doc already exposes images, otherwise fires a lazy fetch with a
+ * concurrency cap.
  */
-export function useDocCover(doc, size = 'MI') {
+export function useDocCover(doc, size = 'MI', lang = 'fr') {
   const api = useC2cApi();
   const url = ref(null);
 
@@ -78,41 +117,23 @@ export function useDocCover(doc, size = 'MI') {
       return;
     }
     const cached = coverCache.get(d.document_id);
-    if (cached?.filename || cached?.document_id) {
+    if (cached) {
       url.value = api.imageUrl(cached, size);
       return;
     }
-    if (cached?.state === 'loaded' || cached?.state === 'error') {
+    if (cached === null) {
+      // Confirmed no cover.
       url.value = null;
       return;
     }
-    // Fire the lazy fetch.
-    fetchCover(api, d.document_id).then((entry) => {
-      if (entry?.filename || entry?.document_id) {
-        url.value = api.imageUrl(entry, size);
-      } else {
-        url.value = null;
-      }
+    // Cache miss — fire and forget; resolve url when the fetch lands.
+    fetchCover(api, d, lang).then((entry) => {
+      if (entry) url.value = api.imageUrl(entry, size);
+      else url.value = null;
     });
   }
 
-  // Re-resolve when the underlying doc changes (eg list pagination).
-  watch(
-    () => doc?.value ?? doc,
-    () => resolve(),
-    { immediate: true, deep: false }
-  );
+  watch(() => doc?.value ?? doc, () => resolve(), { immediate: true, deep: false });
 
   return { url };
-}
-
-// Expose the size builder for callers that want a different size from the
-// same resolved cover (eg thumbnail vs hero in different variants).
-export function coverUrl(doc, size = 'MI') {
-  const api = useC2cApi();
-  const direct = readDirectImage(doc);
-  if (direct) return api.imageUrl(direct, size);
-  const cached = coverCache.get(doc?.document_id);
-  if (cached?.filename || cached?.document_id) return api.imageUrl(cached, size);
-  return null;
 }

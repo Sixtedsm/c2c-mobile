@@ -102,6 +102,10 @@ export function useC2cApi() {
         password,
         // Skip Discourse SSO flow — we only need the JWT for the API.
         discourse: false,
+        // Some accounts require explicit Terms-of-Service acceptance on every
+        // login (typically after a TOS update). Setting this avoids a 403
+        // for users who have already accepted them on the website.
+        accept_tos: true,
       });
       return data;
     },

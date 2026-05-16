@@ -17,25 +17,28 @@ const forgotEmailSent = ref(false);
 const showForgot = ref(false);
 
 async function submit() {
-  if (!username.value.trim() || !password.value) return;
+  if (!username.value.trim() || !password.value || busy.value) return;
   busy.value = true;
   error.value = null;
+  forgotEmailSent.value = false;
   try {
     const data = await api.login({
       username: username.value.trim(),
       password: password.value,
     });
+    // Apply state immediately so the rest of the app sees the session even
+    // if the persist write to IDB hasn't flushed yet, then navigate before
+    // any further work — Sixte's bug was a window where the success arrived
+    // but the view still showed the login form, looking like a failure.
     auth.applyLoginResponse(data);
-    await auth.persist();
-
-    // Return to wherever the user was heading (if a `redirect` query param
-    // was set by a route guard), else go to the profile page.
     const redirect = route.query.redirect;
     if (typeof redirect === 'string' && redirect.startsWith('/')) {
       router.replace(redirect);
     } else {
       router.replace({ name: 'profile' });
     }
+    // Persist in background — failure to write IDB shouldn't block UX.
+    auth.persist().catch(() => {});
   } catch (e) {
     if (e?.response?.status === 403) {
       error.value = 'Identifiants invalides.';
@@ -136,10 +139,12 @@ function back() {
         type="submit"
         class="btn-primary w-full"
         :disabled="busy || !username.trim() || !password"
-        :class="(busy || !username.trim() || !password) ? 'opacity-60' : ''"
+        :class="(busy || !username.trim() || !password) ? 'opacity-60 cursor-not-allowed' : ''"
       >
-        <span v-if="!busy">Se connecter</span>
-        <span v-else>Connexion…</span>
+        <svg v-if="busy" class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M12 2v4" /><path d="M12 18v4" /><path d="m4.93 4.93 2.83 2.83" /><path d="m16.24 16.24 2.83 2.83" /><path d="M2 12h4" /><path d="M18 12h4" /><path d="m4.93 19.07 2.83-2.83" /><path d="m16.24 7.76 2.83-2.83" />
+        </svg>
+        <span>{{ busy ? 'Connexion…' : 'Se connecter' }}</span>
       </button>
 
       <div class="text-center text-xs">
