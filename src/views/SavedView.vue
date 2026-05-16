@@ -7,14 +7,33 @@ import FolderPicker from '@/components/FolderPicker.vue';
 const offlineStore = useOfflineStore();
 const api = useC2cApi();
 const storage = ref({ usage: 0, quota: 0 });
+// Local search within saved topos — filters by title across folders.
+const query = ref('');
+
+function titleOf(entry) {
+  const data = entry.data;
+  if (data?.cooked?.title) return data.cooked.title;
+  if (Array.isArray(data?.locales)) {
+    const match = data.locales.find((l) => l.lang === entry.lang) || data.locales[0];
+    if (match?.title) return match.title;
+  }
+  return 'Sans titre';
+}
+
+const filteredDocs = computed(() => {
+  const q = query.value.trim().toLowerCase();
+  if (!q) return offlineStore.savedDocs;
+  return offlineStore.savedDocs.filter((e) => titleOf(e).toLowerCase().includes(q));
+});
 
 const groupedByFolder = computed(() => {
+  const list = filteredDocs.value;
   const groups = [];
   for (const folder of offlineStore.folders) {
-    const entries = offlineStore.savedDocs.filter((e) => e.folderId === folder.id);
+    const entries = list.filter((e) => e.folderId === folder.id);
     groups.push({ id: folder.id, name: folder.name, entries });
   }
-  const unfiled = offlineStore.savedDocs.filter((e) => !e.folderId);
+  const unfiled = list.filter((e) => !e.folderId);
   if (unfiled.length || !groups.length) {
     groups.push({ id: null, name: 'Sans dossier', entries: unfiled });
   }
@@ -32,16 +51,6 @@ function formatBytes(bytes) {
     i += 1;
   }
   return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
-}
-
-function titleOf(entry) {
-  const data = entry.data;
-  if (data?.cooked?.title) return data.cooked.title;
-  if (Array.isArray(data?.locales)) {
-    const match = data.locales.find((l) => l.lang === entry.lang) || data.locales[0];
-    if (match?.title) return match.title;
-  }
-  return 'Sans titre';
 }
 
 // Cover image for a saved entry. Saved docs are cooked (have associations)
@@ -101,26 +110,41 @@ onMounted(async () => {
 
 <template>
   <div class="flex flex-col">
-    <header
-      class="page-header flex items-center justify-between"
-    >
-      <div>
-        <h1 class="page-title">Mes topos</h1>
-        <p class="text-xs text-zinc-500 dark:text-zinc-400">
-          {{ offlineStore.savedCount }} topos · {{ formatBytes(storage.usage) }} utilisés
-        </p>
+    <header class="page-header">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="page-title">Mes topos</h1>
+          <p class="text-xs text-zinc-500">
+            {{ offlineStore.savedCount }} topos · {{ formatBytes(storage.usage) }} utilisés
+          </p>
+        </div>
+        <button
+          class="btn-primary !px-3 !py-2"
+          :disabled="offlineStore.creatingFolder"
+          :class="offlineStore.creatingFolder ? 'opacity-50' : ''"
+          @click="openNewFolderSheet"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Dossier
+        </button>
       </div>
-      <button
-        class="btn-primary !px-3 !py-2"
-        :disabled="offlineStore.creatingFolder"
-        :class="offlineStore.creatingFolder ? 'opacity-50' : ''"
-        @click="openNewFolderSheet"
-      >
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+
+      <!-- Local search bar — filters by title across all folders. -->
+      <div v-if="offlineStore.savedDocs.length" class="relative mt-2">
+        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
         </svg>
-        Dossier
-      </button>
+        <input
+          v-model="query"
+          type="search"
+          inputmode="search"
+          placeholder="Rechercher dans mes topos…"
+          class="w-full bg-white py-2 pl-9 pr-3 text-base placeholder:text-zinc-400 focus:border-brand-500 focus:outline-none"
+          style="border: 1px solid rgba(0,0,0,0.18); border-radius: 3px;"
+        />
+      </div>
     </header>
 
     <section class="space-y-5 p-3">
@@ -161,12 +185,12 @@ onMounted(async () => {
                   :to="{ name: 'topo', params: { type: entry.type, id: entry.id, lang: entry.lang }, query: { from: 'saved' } }"
                   class="flex min-w-0 flex-1 items-center gap-3"
                 >
-                  <div class="h-14 w-14 flex-none overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800">
+                  <div class="h-14 w-14 flex-none overflow-hidden bg-zinc-200">
                     <img v-if="coverOf(entry)" :src="coverOf(entry)" alt="" class="h-full w-full object-cover" loading="lazy" />
                   </div>
                   <div class="min-w-0 flex-1">
                     <h3 class="truncate font-medium">{{ titleOf(entry) }}</h3>
-                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                    <p class="text-xs text-zinc-500">
                       <span class="capitalize">{{ entry.type }}</span> · {{ entry.lang.toUpperCase() }}
                     </p>
                   </div>

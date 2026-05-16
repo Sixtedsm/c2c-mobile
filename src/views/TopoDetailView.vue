@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useC2cApi } from '@/composables/useC2cApi';
 import { useOfflineStore } from '@/stores/offline';
@@ -30,10 +30,10 @@ const isOfflineMode = computed(() => {
   return isSaved.value;
 });
 
-// Offline-mode tab state (only used when isOfflineMode is true).
-const tabState = ref('main');
-const swipePane = ref('description');
-const swipeContainer = ref(null);
+// Offline-mode tab state. Three independent tabs — no swipe pair between
+// Description and Carte (Sixte was explicit: in saved/offline view, Description,
+// Carte and Photos are three separate sections, not a swipe carousel).
+const tabState = ref('description');
 
 const docType = computed(() => route.params.type);
 const docId = computed(() => route.params.id);
@@ -147,31 +147,8 @@ function back() {
   else router.push({ name: 'search' });
 }
 
-// --- Offline mode swipe pair (Description ↔ Carte) -------------------------
-function scrollToPane(pane) {
-  swipePane.value = pane;
-  const el = swipeContainer.value;
-  if (!el) return;
-  el.scrollTo({ left: pane === 'carte' ? el.clientWidth : 0, behavior: 'smooth' });
-}
-
-function onSwipeScroll(e) {
-  const el = e.target;
-  const pane = el.scrollLeft > el.clientWidth / 2 ? 'carte' : 'description';
-  if (pane !== swipePane.value) swipePane.value = pane;
-}
-
 function selectTab(key) {
-  if (key === 'description' || key === 'carte') {
-    if (tabState.value !== 'main') {
-      tabState.value = 'main';
-      nextTick(() => scrollToPane(key));
-    } else {
-      scrollToPane(key);
-    }
-  } else {
-    tabState.value = key;
-  }
+  tabState.value = key;
 }
 
 const OFFLINE_TABS = [
@@ -179,11 +156,6 @@ const OFFLINE_TABS = [
   { key: 'carte', label: 'Carte' },
   { key: 'photos', label: 'Photos' },
 ];
-
-const activeTabKey = computed(() => {
-  if (tabState.value === 'main') return swipePane.value;
-  return tabState.value;
-});
 
 watch(() => route.fullPath, load);
 onMounted(load);
@@ -248,18 +220,18 @@ onMounted(load);
     </div>
 
     <!-- =================== OFFLINE MODE (Mes topos) =================== -->
+    <!-- Three independent tabs — no swipe carousel. Each tab is a standalone
+         view focused on one need on the field: read, navigate, look at photos. -->
     <template v-else-if="isOfflineMode">
-      <div class="sticky top-0 z-20 mt-3 border-b border-zinc-200 bg-white/95 px-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+      <div class="sticky top-0 z-20 mt-3 bg-white px-3" style="border-bottom: 1px solid rgba(0,0,0,0.12);">
         <div class="flex gap-3">
           <button
             v-for="tab in OFFLINE_TABS"
             :key="tab.key"
             class="border-b-2 px-2 py-2.5 text-sm font-medium transition-colors"
-            :class="
-              activeTabKey === tab.key
-                ? 'border-brand-500 text-zinc-900 dark:text-zinc-100'
-                : 'border-transparent text-zinc-500 dark:text-zinc-400'
-            "
+            :style="tabState === tab.key
+              ? 'border-color: #ff9933; color: #4a4a4a;'
+              : 'border-color: transparent; color: #9ca3af;'"
             @click="selectTab(tab.key)"
           >
             {{ tab.label }}
@@ -267,28 +239,13 @@ onMounted(load);
         </div>
       </div>
 
-      <div v-if="tabState === 'main'" class="relative">
-        <div
-          ref="swipeContainer"
-          class="flex snap-x snap-mandatory overflow-x-auto no-scrollbar overscroll-x-contain"
-          @scroll.passive="onSwipeScroll"
-        >
-          <section class="w-full flex-none snap-start p-4">
-            <DocLocaleSections :doc="doc" :lang="docLang" />
-          </section>
-          <section class="w-full flex-none snap-start p-4">
-            <TopoMapPanel :doc="doc" :active="swipePane === 'carte'" />
-          </section>
-        </div>
-        <div class="pointer-events-none flex justify-center gap-1.5 pb-3 pt-1">
-          <span
-            v-for="p in ['description', 'carte']"
-            :key="p"
-            class="h-1.5 w-1.5 rounded-full transition-colors"
-            :class="swipePane === p ? 'bg-brand-500' : 'bg-zinc-300 dark:bg-zinc-700'"
-          />
-        </div>
-      </div>
+      <section v-if="tabState === 'description'" class="p-4">
+        <DocLocaleSections :doc="doc" :lang="docLang" />
+      </section>
+
+      <section v-else-if="tabState === 'carte'" class="p-4">
+        <TopoMapPanel :doc="doc" :active="true" />
+      </section>
 
       <section v-else-if="tabState === 'photos'" class="p-4">
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -298,7 +255,7 @@ onMounted(load);
             :href="img.full"
             target="_blank"
             rel="noopener"
-            class="aspect-square overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800"
+            class="aspect-square overflow-hidden bg-zinc-100"
           >
             <img :src="img.src" alt="" class="h-full w-full object-cover" loading="lazy" />
           </a>

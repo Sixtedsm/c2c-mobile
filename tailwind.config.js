@@ -5,42 +5,50 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand orange anchored on the C2C identity. Used for primary actions
-        // and the active state of nav/tab/filter controls.
+        // C2C brand orange. Exact hex from c2c_ui variables.scss.
         brand: {
           50: '#fff5e6',
-          100: '#ffe6c2',
-          200: '#ffce85',
-          300: '#ffb547',
-          400: '#ffa31f',
-          500: '#ff9933',
-          600: '#e6791f',
-          700: '#bf5a17',
-          800: '#994513',
-          900: '#7a370f',
+          100: '#ffce9e',                  // $color-base-c2c-lighter
+          200: '#ffb870',
+          300: '#ffa347',
+          400: '#ff9933',
+          500: '#ff9933',                  // $color-base-c2c
+          600: '#cc7a14',
+          700: '#b26f1e',                  // $color-base-c2c-darker
+          800: '#8c5717',
+          900: '#6b4111',
         },
-        // Per-activity hues. Reused everywhere an activity is rendered (pills,
-        // detail icons, list dividers). Keeps the app legible without
-        // overwhelming the orange brand.
-        act: {
-          rock: '#c2410c',      // escalade — terracotta
-          mountain: '#1d4ed8',  // alpinisme — bleu glacier
-          ice: '#0e7490',       // cascade — bleu cyan
-          ski: '#7c3aed',       // ski — violet
-          hiking: '#15803d',    // rando — vert forêt
-          snowshoe: '#0891b2',  // raquettes — bleu pâle
-          ferrata: '#a16207',   // via ferrata — bronze
-          paragliding: '#db2777',// parapente — rose
-          mtb: '#65a30d',       // VTT — vert olive
+        // C2C complementary blue (links, primary buttons on c2c.org).
+        c2c: {
+          link: '#337ab7',                 // $color-link / $color-complementary-c2c
+          'link-light': '#7699b8',
+          text: '#4a4a4a',                 // $color-text
+          bg: '#fbfaf6',                   // $body-background-color (warm off-white)
+          green: '#4baf50',                // success
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        // System stack matching Bulma's default (what c2c.org actually uses).
+        sans: [
+          'BlinkMacSystemFont', '-apple-system', '"Segoe UI"', 'Roboto',
+          'Oxygen', 'Ubuntu', 'Cantarell', '"Fira Sans"', '"Droid Sans"',
+          '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif',
+        ],
+      },
+      fontSize: {
+        // c2c body is 14px. Mobile inputs stay 16px to prevent iOS auto-zoom.
+        base: ['14px', '1.5'],
       },
       boxShadow: {
-        card: '0 2px 16px -4px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.04)',
-        'card-hover': '0 8px 24px -8px rgba(0, 0, 0, 0.15)',
+        // c2c card shadow from variables.scss
+        card: '0 2px 3px rgba(0, 0, 0, 0.1)',
+        'card-hover': '1px 3px 4px rgba(0, 0, 0, 0.1)',
         sheet: '0 -8px 32px -4px rgba(0, 0, 0, 0.25)',
+      },
+      borderRadius: {
+        // c2c uses square corners on cards ($box-radius: 0). Keep small radius
+        // only on chips/pills and inputs for mobile thumb ergonomics.
+        card: '0px',
       },
       maxWidth: {
         app: '480px',
